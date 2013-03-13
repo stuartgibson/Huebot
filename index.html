@@ -65,7 +65,8 @@
             if ( ! light_state.on ){ bri = 0; }
 
             light_list = light_list +
-                         '<li id="light_'+id+'">'+light.name +
+                         '<li id="light_'+id+'">' +
+                         '<span class="single_name" contenteditable data-light_id="'+id+'">'+light.name+'</span>' +
                          '<input type="button" class="single_on" data-light_id="'+id+'" value="On"> ' +
                          '<input type="button" class="single_off" data-light_id="'+id+'" value="Off"> ' +
                          '<input type="range" class="single_brightness" data-light_id="'+id+'" min="0" max="255" value="'+bri+'">' +
@@ -117,6 +118,22 @@
             issue_command( 'PUT', 'lights/'+id+'/state', '{"on": true, "bri": '+bri+'}' ); }
           $("#bright_value_"+id ).html( bri );
         });
+
+        // Change the name of a light
+        $("#light_list").on( "blur", ".single_name", function(e){
+          save_light_name( $(this) );
+        });
+
+        $("#light_list").on( "keydown", ".single_name", function(e){
+          // Enter or Escape pressed
+          if ( e.which  == 13 || e.which == 27 ) {
+            $(this).blur(); }
+        });
+
+        function save_light_name( thing )
+        {
+          issue_command( 'PUT', 'lights/'+ thing.attr('data-light_id'), '{"name": "'+thing.html()+'"}' );
+        }
 
         // Refresh the lights
         $("#get_lights").click( function(e){
