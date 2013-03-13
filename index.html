@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en-gb">
+  <head>
+    <meta charset="utf-8">
+    <title>Huebot</title>
+    <meta name="description" content="Control Philips Hue bulbs from the browser">
+    <meta name="viewport" content="width=device-width">
+  </head>
+  <body id="huebot">
+    <div id="content">
+      <h1>Huebot</h1>
+      <h2>Browser control of Philips Hue</h2>
+      <div id="all">
+        <button id="all_on">All On</button>
+        <button id="all_off">All Off</button>
+      </div>
+
+      <div id="lights">
+        <ul id="light_list">
+
+        </ul>
+      </div>
+
+      <div id="settings">
+        <input type="button" name="get_lights" id="get_lights" value="Refresh Light List">
+
+        <input type="ip" name="ip_address" id="ip_address" placeholder="IP address">
+        <input type="button" name="save_ip" id="save_ip" value="Save">
+      </div>
+    </div>
+
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+    <script type="text/javascript">
+      $( document ).ready(function() {
+
+        // Set up some stuff from Local storage
+        window.ip = null;
+        window.token = '7bc240a0ce7a139ec51478846b983076';
+        window.lights = null;
+
+        // Run some basic commands to create UI elements
+        function init()
+        {
+          ip = localStorage.getItem("ip_address");
+          if ( ! ip ) {
+            alert('no ip');
+            get_ip_address(); }
+          stored_lights = localStorage.getItem("lights");
+          if ( ! stored_lights ){
+            update_light_storage(); }
+          lights = JSON.parse(localStorage.getItem("lights"));
+          $("#ip_address").val(ip);
+          window.ip = ip;
+          window.lights = lights;
+
+          light_list = '';
+          $.each(lights, function(id, light){
+
+            var light_info = issue_command( 'GET', 'lights/'+id );
+            var light_state = light_info.state;
+            bri = light_state.bri;
+            if ( ! light_state.on ){ bri = 0; }
+
+            light_list = light_list +
+                         '<li id="light_' + id + '">' + light.name +
+                         '<input type="button" class="single_on" data-light_id="'+id+'" value="On"> ' +
+                         '<input type="button" class="single_off" data-light_id="'+id+'" value="Off"> ' +
+                         '<input type="range" class="single_brightness" data-light_id="'+id+'" min="0" max="255" value="' + bri + '">' +
+                         '<span id="bright_value_' + id + '">'+ bri + '</span>' +
+                         '</li>';
+          });
+          $("#light_list").html(light_list);
+        }
+
+        // Save the IP Address
+        $("#save_ip").click( function(e){
+          localStorage.setItem("ip_address", $("#ip_address").val() );
+        });
+
+        // Turn all the lights on
+        $("#all_on").click( function(e){
+          $.each(window.lights, function(id, light){
+            issue_command( 'PUT', 'lights/'+id+'/state', '{"on": true}' );
+          });
+        });
+
+        // Turn all the lights off
+        $("#all_off").click( function(e){
+          $.each(window.lights, function(id, light){
+            issue_command( 'PUT', 'lights/'+id+'/state', '{"on": false}' );
+          });
+        });
+
+        // Turn a single light off
+        $("#light_list").on( "click", ".single_off", function(e){
+          issue_command( 'PUT', 'lights/'+ $(this).attr('data-light_id') +'/state', '{"on": false}' );
+        });
+
+        // Turn a single light on
+        $("#light_list").on( "click", ".single_on", function(e){
+          issue_command( 'PUT', 'lights/'+ $(this).attr('data-light_id') +'/state', '{"on": true}' );
+        });
+
+        // Change brightness of single light
+        $("#light_list").on( "change", ".single_brightness", function(e){
+          var bri = $(this).val();
+          if ( bri == 0 ){
+            issue_command( 'PUT', 'lights/'+ $(this).attr('data-light_id') +'/state', '{"on": false}' );
+          }
+          else{
+            issue_command( 'PUT', 'lights/'+ $(this).attr('data-light_id') +'/state', '{"on": true, "bri": ' + bri + '}' ); }
+          $("#bright_value_" + $(this).attr('data-light_id') ).html( bri );
+        });
+
+        // Refresh the lights
+        $("#get_lights").click( function(e){
+          update_light_storage();
+          init();
+        });
+
+        // Get list of lights and save to local storage and window
+        function update_light_storage()
+        {
+          var lights = issue_command( 'GET', 'lights' );
+          window.lights = lights;
+          localStorage.setItem("lights", JSON.stringify(lights) );
+        }
+
+        // Send a command to the portal
+        function issue_command( method, path, data )
+        {
+          url = 'http://'+ window.ip + '/api/' + window.token + '/' + path;
+          var ajaxResponse;
+          $.ajax({
+            async: false,
+            url: url,
+            type: method,
+            data: data,
+            success: function(response){
+              ajaxResponse = response;
+            }
+          });
+
+          return ajaxResponse;
+        }
+
+        // Use the UPNP to get the portal IP address
+        // Very dirty, assumes there is only one.
+        function get_ip_address()
+        {
+          $.ajax({
+            async: false,
+            url: 'http://www.meethue.com/api/nupnpx',
+            type: 'GET',
+            success: function(response){
+              var ip = response[0].internalipaddress;
+              localStorage.setItem("ip_address", ip );
+              window.ip = ip;
+            }
+          });
+        }
+        init();
+      });
+    </script>
+  </body>
+</html>
