@@ -22,10 +22,11 @@
       </div>
 
       <div id="settings">
-        <input type="button" name="get_lights" id="get_lights" value="Refresh Light List">
+        <input type="button" name="get_lights" id="get_lights" value="Refresh Light List"><br><br>
 
-        <input type="ip" name="ip_address" id="ip_address" placeholder="IP address">
-        <input type="button" name="save_ip" id="save_ip" value="Save">
+        <input type="text" name="username" id="username" placeholder="username"><br>
+        <input type="ip" name="ip_address" id="ip_address" placeholder="IP address"><br>
+        <input type="button" name="save_config" id="save_config" value="Save">
       </div>
     </div>
 
@@ -35,22 +36,24 @@
 
         // Set up some stuff from Local storage
         window.ip = null;
-        window.token = '7bc240a0ce7a139ec51478846b983076';
+        window.username = null;
         window.lights = null;
 
         // Run some basic commands to create UI elements
         function init()
         {
           ip = localStorage.getItem("ip_address");
+          username = localStorage.getItem("username");
           if ( ! ip ) {
-            alert('no ip');
             get_ip_address(); }
           stored_lights = localStorage.getItem("lights");
           if ( ! stored_lights ){
             update_light_storage(); }
           lights = JSON.parse(localStorage.getItem("lights"));
           $("#ip_address").val(ip);
+          $("#username").val(username);
           window.ip = ip;
+          window.username = username;
           window.lights = lights;
 
           light_list = '';
@@ -73,8 +76,9 @@
         }
 
         // Save the IP Address
-        $("#save_ip").click( function(e){
+        $("#save_config").click( function(e){
           localStorage.setItem("ip_address", $("#ip_address").val() );
+          localStorage.setItem("username", $("#username").val() );
         });
 
         // Turn all the lights on
@@ -129,7 +133,7 @@
         // Send a command to the portal
         function issue_command( method, path, data )
         {
-          url = 'http://'+ window.ip + '/api/' + window.token + '/' + path;
+          url = 'http://'+ window.ip + '/api/' + window.username + '/' + path;
           var ajaxResponse;
           $.ajax({
             async: false,
